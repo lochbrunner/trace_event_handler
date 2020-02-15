@@ -19,7 +19,10 @@ class Event:
         self.ts = ts
         self.cat = ''
         self.ph = ph
-        self.name = name
+        if len(name) <= 30:
+            self.name = name
+        else:
+            self.name = name[:27] + '...'
         self.args = {}
 
     def end(self, ts):
@@ -40,13 +43,25 @@ class Trace:
 
 
 class TraceEventHandler(logging.Handler):
-    def __init__(self):
+    def __init__(self, use_duration_events=True):
         super(TraceEventHandler, self).__init__()
         self.trace = Trace()
         self.start_ts = time.time()
         self.event_stack = []
+        self.use_duration_events = use_duration_events
 
     def emit(self, record):
+        if self.use_duration_events:
+            self._emit_duration_events(record)
+        else:
+            self._emit_instant_event(record)
+
+    def _emit_instant_event(self, record):
+        ts = int((record.created - self.start_ts)*1e6)
+        event = Event(ts=ts, name=record.message, ph='I')
+        self.trace.traceEvents.append(event)
+
+    def _emit_duration_events(self, record):
         # Get stack information
         def create_id(code):
             return f'{code.co_filename}:{code.co_firstlineno}'
@@ -54,8 +69,9 @@ class TraceEventHandler(logging.Handler):
                   for trace in traceback.walk_stack(sys._getframe().f_back)]
         stack_names = [trace.f_code.co_name
                        for trace in traces]
+        log_index = stack_names.index('_log')+2
         module_index = stack_names.index('<module>')
-        traces = traces[5:module_index]
+        traces = traces[log_index:module_index]
         stack_ids = [create_id(trace.f_code) for trace in traces]
         ts = int((record.created - self.start_ts)*1e6)
 
