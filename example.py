@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import logging
-
 from trace_event_handler import TraceEventHandler
 
 
@@ -17,17 +16,16 @@ def foo():
 
 
 if __name__ == '__main__':
-    my_handler = TraceEventHandler()
+    handler = TraceEventHandler()
     logging.basicConfig(
         handlers=[
             logging.StreamHandler(None),
-            my_handler
+            handler
         ],
         level=logging.INFO
     )
 
     global logger
-
     logger = logging.getLogger(__file__)
 
     logger.warning('root 1')
@@ -38,4 +36,4 @@ if __name__ == '__main__':
     logger.warning('root 2')
     logger.warning('root 3')
 
-    my_handler.dump()
+    handler.dump()

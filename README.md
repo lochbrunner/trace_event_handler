@@ -2,6 +2,8 @@
 
 This logging writes the logs in the [Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/).
 
+![Screenshot](https://github.com/lochbrunner/trace_event_handler/blob/master/assets/screenshot.png)
+
 ## Installation
 
 ```zsh
@@ -22,7 +24,7 @@ logging.basicConfig(
     ]
 )
 
-# Do you stuff and log it
+# Do your stuff and log it
 # ...
 
 # Dump the trace to file
@@ -31,6 +33,8 @@ handler.dump('trace.json')
 
 Open your Chromium based browser and navigate to `chrome://tracing`.
 Click on `Load` and select your dumped trace file.
+
+The [example](https://github.com/lochbrunner/trace_event_handler/blob/master/example.py) leads to the trace seen in the figure above.
 
 ## Publishing manually
 
