@@ -4,7 +4,9 @@ This logging writes the logs in the [Trace Event Format](https://docs.google.com
 
 ## Installation
 
-Coming soon ...
+```zsh
+pip install trace-event-handler
+```
 
 ## Usage
 
@@ -17,8 +19,7 @@ logging.basicConfig(
     handlers=[
         logging.StreamHandler(None),
         handler
-    ],
-    level=logging.INFO
+    ]
 )
 
 # Do you stuff and log it
@@ -30,3 +31,10 @@ handler.dump('trace.json')
 
 Open your Chromium based browser and navigate to `chrome://tracing`.
 Click on `Load` and select your dumped trace file.
+
+## Publishing manually
+
+```zsh
+python3 setup.py sdist bdist_wheel
+python3 -m twine upload  dist/*
+```

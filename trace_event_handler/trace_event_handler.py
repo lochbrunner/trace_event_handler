@@ -72,6 +72,8 @@ class TraceEventHandler(logging.Handler):
         log_index = stack_names.index('_log')+2
         module_index = stack_names.index('<module>')
         traces = traces[log_index:module_index]
+        # We use <filename>:<line number> as stack ids instead of the standard ids
+        # because they are not the same for the same stack frame.
         stack_ids = [create_id(trace.f_code) for trace in traces]
         ts = int((record.created - self.start_ts)*1e6)
 
