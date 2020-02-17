@@ -2,6 +2,7 @@
 [![PyPI](https://img.shields.io/pypi/v/trace_event_handler)](https://pypi.org/project/trace-event-handler/)
 ![PyPI - License](https://img.shields.io/pypi/l/trace_event_handler)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/trace_event_handler)](https://pypi.org/project/trace-event-handler/)
+![Python package](https://github.com/lochbrunner/trace_event_handler/workflows/Python%20package/badge.svg)
 
 # Logging Handler writing Trace Event Format
 
