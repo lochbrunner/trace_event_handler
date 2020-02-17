@@ -13,7 +13,7 @@ class TrivialEncoder(json.JSONEncoder):
 
 
 class Event:
-    def __init__(self, ts, name, ph='B'):
+    def __init__(self, ts, name, sf=None, ph='B'):
         self.pid = os.getpid()
         self.tid = threading.current_thread().ident
         self.ts = ts
@@ -23,32 +23,46 @@ class Event:
             self.name = name
         else:
             self.name = name[:27] + '...'
+        if sf is not None:
+            self.sf = sf
         self.args = {}
 
     def end(self, ts):
         return Event(
             name=self.name,
             ts=ts,
-            ph='E'
+            ph='E',
+            sf=self.sf
         )
+
+
+class StackFrame:
+    def __init__(self, name, parent=None):
+        self.name = name
+        self.category = ''
+        if parent is not None:
+            self.parent = parent
 
 
 class Trace:
     def __init__(self):
         self.traceEvents = []
-        self.meta_user = "",
-        self.meta_cpu_count = "1"
+        self.stackFrames = {}
+        self.meta_user = '',
+        self.meta_cpu_count = '1'
         self.stackFrames = {}
         self.samples = []
 
 
 class TraceEventHandler(logging.Handler):
-    def __init__(self, use_duration_events=True):
+    def __init__(self, use_duration_events=True, max_events=None):
         super(TraceEventHandler, self).__init__()
         self.trace = Trace()
         self.start_ts = time.time()
         self.event_stack = []
         self.use_duration_events = use_duration_events
+        self.max_events = max_events
+        self.stackFrameMapping = {}  # file:ln -> id
 
     def emit(self, record):
         if self.use_duration_events:
@@ -71,6 +85,23 @@ class TraceEventHandler(logging.Handler):
                        for trace in traces]
         log_index = stack_names.index('_log')+2
         module_index = stack_names.index('<module>')
+
+        # Get stack frame id
+        trace_name = traces[log_index].f_code.co_name.replace('<module>', '__main__')
+        trace_id = create_id(traces[log_index].f_code)
+        if trace_id not in self.stackFrameMapping:
+            sf_id = str(len(self.trace.stackFrames))
+            self.stackFrameMapping[trace_id] = sf_id
+            # Parent id
+            if module_index == log_index:
+                sf_parent_id = None
+            else:
+                parent_trace_id = create_id(traces[log_index+1].f_code)
+                sf_parent_id = self.stackFrameMapping[parent_trace_id]
+            self.trace.stackFrames[sf_id] = StackFrame(trace_name, parent=sf_parent_id)
+        else:
+            sf_id = self.stackFrameMapping[trace_id]
+
         traces = traces[log_index:module_index]
         # We use <filename>:<line number> as stack ids instead of the standard ids
         # because they are not the same for the same stack frame.
@@ -97,9 +128,10 @@ class TraceEventHandler(logging.Handler):
         self.event_stack = [
             frame for frame in self.event_stack if remove_outdated_frame(frame)]
 
-        event = Event(ts=ts, name=record.message)
+        event = Event(ts=ts, name=record.message, sf=sf_id)
         self.trace.traceEvents.append(event)
-        self.event_stack.append((stack_ids, event))
+        if self.max_events is None or len(self.event_stack) + len(self.trace.traceEvents) < self.max_events:
+            self.event_stack.append((stack_ids, event))
 
     def dump(self, filename='trace.json'):
         ts = int((time.time() - self.start_ts)*1e6)

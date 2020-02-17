@@ -1,4 +1,10 @@
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/trace_event_handler)
+[![PyPI](https://img.shields.io/pypi/v/trace_event_handler)](https://pypi.org/project/trace-event-handler/)
+![PyPI - License](https://img.shields.io/pypi/l/trace_event_handler)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/trace_event_handler)](https://pypi.org/project/trace-event-handler/)
+
 # Logging Handler writing Trace Event Format
+
 
 This logging writes the logs in the [Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/).
 
