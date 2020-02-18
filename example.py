@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import logging
 from trace_event_handler import TraceEventHandler
@@ -13,6 +13,10 @@ def foo():
     global logger
     logger.warning('foo')
     bar()
+
+
+def middle():
+    foo()
 
 
 if __name__ == '__main__':
@@ -30,8 +34,8 @@ if __name__ == '__main__':
 
     logger.warning('root 1')
 
-    foo()
-    foo()
+    middle()
+    # foo()
 
     logger.warning('root 2')
     logger.warning('root 3')

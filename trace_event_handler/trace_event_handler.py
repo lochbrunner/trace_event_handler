@@ -55,7 +55,7 @@ class Trace:
 
 
 class TraceEventHandler(logging.Handler):
-    def __init__(self, use_duration_events=True, max_events=None):
+    def __init__(self, use_duration_events=True, max_events=None, entrypoint='<module>'):
         super(TraceEventHandler, self).__init__()
         self.trace = Trace()
         self.start_ts = time.time()
@@ -63,6 +63,7 @@ class TraceEventHandler(logging.Handler):
         self.use_duration_events = use_duration_events
         self.max_events = max_events
         self.stackFrameMapping = {}  # file:ln -> id
+        self.entrypoint = entrypoint
 
     def emit(self, record):
         if self.use_duration_events:
@@ -75,37 +76,47 @@ class TraceEventHandler(logging.Handler):
         event = Event(ts=ts, name=record.message, ph='I')
         self.trace.traceEvents.append(event)
 
+    def create_id(self, code):
+        return f'{code.co_filename}:{code.co_firstlineno}'
+
+    def get_frame_id(self, traces, begin, module_index):
+        trace_name = traces[begin].f_code.co_name.replace(self.entrypoint, '__main__')
+        trace_id = self.create_id(traces[begin].f_code)
+        if trace_id not in self.stackFrameMapping:
+            # Parent id
+            if module_index == begin:
+                sf_parent_id = None
+            else:
+                sf_parent_id = self.get_frame_id(traces, begin+1, module_index)
+            sf_id = str(len(self.trace.stackFrames))
+            self.stackFrameMapping[trace_id] = sf_id
+            self.trace.stackFrames[sf_id] = StackFrame(trace_name, parent=sf_parent_id)
+        else:
+            sf_id = self.stackFrameMapping[trace_id]
+        return sf_id
+
+    def find_user_code(self, traces, begin_index):
+        for i, trace in enumerate(traces[begin_index:]):
+            if 'logging/__init__.py' not in trace.f_code.co_filename:
+                return begin_index + i
+        return -1
+
     def _emit_duration_events(self, record):
         # Get stack information
-        def create_id(code):
-            return f'{code.co_filename}:{code.co_firstlineno}'
         traces = [trace[0]
                   for trace in traceback.walk_stack(sys._getframe().f_back)]
         stack_names = [trace.f_code.co_name
                        for trace in traces]
-        log_index = stack_names.index('_log')+2
-        module_index = stack_names.index('<module>')
+        log_index = self.find_user_code(traces, stack_names.index('_log'))
 
         # Get stack frame id
-        trace_name = traces[log_index].f_code.co_name.replace('<module>', '__main__')
-        trace_id = create_id(traces[log_index].f_code)
-        if trace_id not in self.stackFrameMapping:
-            sf_id = str(len(self.trace.stackFrames))
-            self.stackFrameMapping[trace_id] = sf_id
-            # Parent id
-            if module_index == log_index:
-                sf_parent_id = None
-            else:
-                parent_trace_id = create_id(traces[log_index+1].f_code)
-                sf_parent_id = self.stackFrameMapping[parent_trace_id]
-            self.trace.stackFrames[sf_id] = StackFrame(trace_name, parent=sf_parent_id)
-        else:
-            sf_id = self.stackFrameMapping[trace_id]
+        module_index = stack_names.index(self.entrypoint)
+        sf_id = self.get_frame_id(traces, log_index, module_index)
 
         traces = traces[log_index:module_index]
         # We use <filename>:<line number> as stack ids instead of the standard ids
         # because they are not the same for the same stack frame.
-        stack_ids = [create_id(trace.f_code) for trace in traces]
+        stack_ids = [self.create_id(trace.f_code) for trace in traces]
         ts = int((record.created - self.start_ts)*1e6)
 
         def frame_ended(stack):
@@ -128,16 +139,20 @@ class TraceEventHandler(logging.Handler):
         self.event_stack = [
             frame for frame in self.event_stack if remove_outdated_frame(frame)]
 
-        event = Event(ts=ts, name=record.message, sf=sf_id)
+        msg = getattr(record, 'msg', getattr(record, 'message', 'Unknown message'))
+        event = Event(ts=ts, name=msg, sf=sf_id)
         self.trace.traceEvents.append(event)
         if self.max_events is None or len(self.event_stack) + len(self.trace.traceEvents) < self.max_events:
             self.event_stack.append((stack_ids, event))
 
-    def dump(self, filename='trace.json'):
+    def close(self):
         ts = int((time.time() - self.start_ts)*1e6)
         for frame in self.event_stack:
             end = frame[1].end(ts=ts)
             self.trace.traceEvents.append(end)
+
+    def dump(self, filename='trace.json'):
+        self.close()
 
         with open(filename, 'w') as f:
             json.dump(self.trace, f, cls=TrivialEncoder,
