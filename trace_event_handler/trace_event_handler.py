@@ -136,10 +136,15 @@ class TraceEventHandler(logging.Handler):
             else:
                 return True
 
+        msg = getattr(record, 'msg', getattr(record, 'message', 'Unknown message'))
+        if type(msg).__name__ == 'bytes':
+            msg = str(msg, 'utf-8')
+        elif type(msg) != str:
+            return
+
         self.event_stack = [
             frame for frame in self.event_stack if remove_outdated_frame(frame)]
 
-        msg = getattr(record, 'msg', getattr(record, 'message', 'Unknown message'))
         event = Event(ts=ts, name=msg, sf=sf_id)
         self.trace.traceEvents.append(event)
         if self.max_events is None or len(self.event_stack) + len(self.trace.traceEvents) < self.max_events:
