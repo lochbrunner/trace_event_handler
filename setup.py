@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='trace_event_handler',
-    version='0.0.3',
+    version='0.0.4',
     author='Matthias Lochbrunner',
     author_email='matthias_lochbrunner@web.de',
     description='Python Logging Handler which dumps in the Trace Event Format supported by Chromium based browsers.',

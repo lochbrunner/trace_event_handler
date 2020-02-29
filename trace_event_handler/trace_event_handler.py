@@ -19,6 +19,10 @@ class Event:
         self.ts = ts
         self.cat = ''
         self.ph = ph
+        if type(name) == bytes:
+            name = name.decode('utf-8')
+        elif type(name) != str:
+            name = str(name)
         if len(name) <= 30:
             self.name = name
         else:
@@ -137,10 +141,6 @@ class TraceEventHandler(logging.Handler):
                 return True
 
         msg = getattr(record, 'msg', getattr(record, 'message', 'Unknown message'))
-        if type(msg).__name__ == 'bytes':
-            msg = str(msg, 'utf-8')
-        elif type(msg) != str:
-            return
 
         self.event_stack = [
             frame for frame in self.event_stack if remove_outdated_frame(frame)]
